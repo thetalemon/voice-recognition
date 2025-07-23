@@ -98,7 +98,12 @@ const FuwaFuwaVisualizer: React.FC = () => {
             tempCanvas.height = p.height;
             const tempCtx = tempCanvas.getContext("2d");
             if (tempCtx) {
+              // 映像を左右反転（ミラー）
+              tempCtx.save();
+              tempCtx.translate(p.width, 0);
+              tempCtx.scale(-1, 1);
               tempCtx.drawImage(videoRef.current, 0, 0, p.width, p.height);
+              tempCtx.restore();
               const imgData = tempCtx.getImageData(0, 0, p.width, p.height);
               // p5.jsのピクセル操作
               p.colorMode(p.RGB, 255);
@@ -137,12 +142,16 @@ const FuwaFuwaVisualizer: React.FC = () => {
           const angleStep = p.TWO_PI / sides;
           const baseRadiusHex = 50;
           const stepsHex = 40;
-          barRadius = baseRadiusHex - 6;
+          barRadius = baseRadiusHex - 2;
           if (fft) spectrum = fft.analyze();
 
           p.push();
           p.translate(x, y);
           p.colorMode(p.HSL, 360, 100, 100, 1);
+          // 六角形の虹色グラデーション＋波打ちの背景に黒円を描画
+          p.noStroke();
+          p.fill(0);
+          p.ellipse(0, 0, baseRadiusHex * 2 + 4, baseRadiusHex * 2 + 12);
 
           // 頂点座標を計算
           const vertices: { x: number; y: number }[] = [];
@@ -169,7 +178,7 @@ const FuwaFuwaVisualizer: React.FC = () => {
                 const randomSeed2 = 100 + (i * stepsHex + j + 1) * 13;
                 const waveVal1 = wave
                   ? Math.sin(angle1 * 8 + p.frameCount * 0.25) *
-                      Math.max(2, Math.min(18, level * 60)) +
+                      Math.max(2, Math.min(72, level * 240)) +
                     (wave
                       ? Math.sin(
                           angle1 * 2 + p.frameCount * 0.07 + randomSeed1
@@ -178,7 +187,7 @@ const FuwaFuwaVisualizer: React.FC = () => {
                   : 0;
                 const waveVal2 = wave
                   ? Math.sin(angle2 * 8 + p.frameCount * 0.25) *
-                      Math.max(2, Math.min(18, level * 60)) +
+                      Math.max(2, Math.min(72, level * 240)) +
                     (wave
                       ? Math.sin(
                           angle2 * 2 + p.frameCount * 0.07 + randomSeed2
@@ -268,22 +277,25 @@ const FuwaFuwaVisualizer: React.FC = () => {
           // --- ここまでリニアバーの円周配置 ---
 
           // --- ここから中心のふわふわ虹色円 ---
-          const centerRadius = 3 + level * 10; // さらに小さめ、音量で変動
-          const glowLayers = 8;
-          for (let g = glowLayers; g > 0; g--) {
-            const alpha = 0.08 * (g / glowLayers);
-            const r = centerRadius + g * 3;
-            for (let i = 0; i < 60; i++) {
-              const angle = (p.TWO_PI / 60) * i;
-              const hue = (i / 60) * 360;
-              p.stroke(hue, 100, 60, alpha);
-              p.strokeWeight(3);
-              const x0 = Math.cos(angle) * r;
-              const y0 = Math.sin(angle) * r;
-              const x1 = Math.cos(angle + p.TWO_PI / 60) * r;
-              const y1 = Math.sin(angle + p.TWO_PI / 60) * r;
-              p.line(x0, y0, x1, y1);
-            }
+          const centerRadius = 3 + level * 400; // 変化量を大きく
+          // 虹色グラデーションで塗りつぶし
+          p.noStroke();
+          for (let i = 0; i < 60; i++) {
+            const angle1 = (p.TWO_PI / 60) * i;
+            const angle2 = (p.TWO_PI / 60) * (i + 1);
+            const hue = (i / 60) * 360;
+            p.fill(hue, 100, 60);
+            p.beginShape();
+            p.vertex(0, 0);
+            p.vertex(
+              Math.cos(angle1) * centerRadius,
+              Math.sin(angle1) * centerRadius
+            );
+            p.vertex(
+              Math.cos(angle2) * centerRadius,
+              Math.sin(angle2) * centerRadius
+            );
+            p.endShape(p.CLOSE);
           }
           // 本体
           for (let i = 0; i < 60; i++) {
