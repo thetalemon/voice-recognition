@@ -118,7 +118,8 @@ const FuwaFuwaVisualizer: React.FC = () => {
                   // 明度反転したgray値で水色の階調
                   const gray = 0.299 * r + 0.587 * g + 0.114 * b;
                   const invGray = 255 - gray;
-                  p.fill(0, invGray, 255);
+                  // 彩度を下げた水色（全体的に暗め）
+                  p.fill(0, gray * 0.6, 180);
                   p.ellipse(x + dotSize / 2, y + dotSize / 2, dotSize, dotSize);
                 }
               }
@@ -128,7 +129,7 @@ const FuwaFuwaVisualizer: React.FC = () => {
             p.background(0);
           }
           const x = p.width / 2;
-          const y = p.height / 2;
+          const y = p.height - 80;
 
           // 音量取得
           const level =
@@ -178,7 +179,7 @@ const FuwaFuwaVisualizer: React.FC = () => {
                 const randomSeed2 = 100 + (i * stepsHex + j + 1) * 13;
                 const waveVal1 = wave
                   ? Math.sin(angle1 * 8 + p.frameCount * 0.25) *
-                      Math.max(2, Math.min(72, level * 240)) +
+                      Math.max(0.5, Math.min(72, level * 400)) +
                     (wave
                       ? Math.sin(
                           angle1 * 2 + p.frameCount * 0.07 + randomSeed1
@@ -187,7 +188,7 @@ const FuwaFuwaVisualizer: React.FC = () => {
                   : 0;
                 const waveVal2 = wave
                   ? Math.sin(angle2 * 8 + p.frameCount * 0.25) *
-                      Math.max(2, Math.min(72, level * 240)) +
+                      Math.max(0.5, Math.min(72, level * 400)) +
                     (wave
                       ? Math.sin(
                           angle2 * 2 + p.frameCount * 0.07 + randomSeed2
