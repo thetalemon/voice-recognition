@@ -242,6 +242,38 @@ const FuwaFuwaVisualizer: React.FC = () => {
           p.pop();
           // --- ここまでリニアバーの円周配置 ---
 
+          // --- ここから中心のふわふわ虹色円 ---
+          const centerRadius = 3 + level * 10; // さらに小さめ、音量で変動
+          const glowLayers = 8;
+          for (let g = glowLayers; g > 0; g--) {
+            const alpha = 0.08 * (g / glowLayers);
+            const r = centerRadius + g * 3;
+            for (let i = 0; i < 60; i++) {
+              const angle = (p.TWO_PI / 60) * i;
+              const hue = (i / 60) * 360;
+              p.stroke(hue, 100, 60, alpha);
+              p.strokeWeight(3);
+              const x0 = Math.cos(angle) * r;
+              const y0 = Math.sin(angle) * r;
+              const x1 = Math.cos(angle + p.TWO_PI / 60) * r;
+              const y1 = Math.sin(angle + p.TWO_PI / 60) * r;
+              p.line(x0, y0, x1, y1);
+            }
+          }
+          // 本体
+          for (let i = 0; i < 60; i++) {
+            const angle = (p.TWO_PI / 60) * i;
+            const hue = (i / 60) * 360;
+            p.stroke(hue, 100, 60);
+            p.strokeWeight(1.2);
+            const x0 = Math.cos(angle) * centerRadius;
+            const y0 = Math.sin(angle) * centerRadius;
+            const x1 = Math.cos(angle + p.TWO_PI / 60) * centerRadius;
+            const y1 = Math.sin(angle + p.TWO_PI / 60) * centerRadius;
+            p.line(x0, y0, x1, y1);
+          }
+          // --- ここまで中心のふわふわ虹色円 ---
+
           p.pop();
         };
         p.windowResized = () => {

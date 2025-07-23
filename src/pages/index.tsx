@@ -1,7 +1,5 @@
 import Head from "next/head";
-import { Geist, Geist_Mono } from "next/font/google";
 import dynamic from "next/dynamic";
-import LinearAudioVisualizer from "@/components/LinearAudioVisualizer";
 const FuwaFuwaVisualizerWithLinear = dynamic(
   () => import("@/components/FuwaFuwaVisualizerWithLinear"),
   { ssr: false }
@@ -17,8 +15,6 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <FuwaFuwaVisualizerWithLinear />
-      <div style={{ margin: "32px 0" }} />
-      <LinearAudioVisualizer />
     </>
   );
 }
