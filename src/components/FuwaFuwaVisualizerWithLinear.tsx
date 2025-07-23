@@ -65,6 +65,12 @@ const FuwaFuwaVisualizer: React.FC = () => {
       let recognizing = false;
       let mic: any, amplitude: any;
       const THRESHOLD = 0.01;
+      let fft: any;
+      let spectrum: number[] = [];
+      const barCount = 32;
+      let barRadius = 32; // 仮の初期値、実際はp.draw内で再設定
+      const barLength = 32;
+      const barThreshold = 12; // この値未満の音量では粒を出さない
 
       const sketch = (p: any) => {
         p.setup = () => {
@@ -75,6 +81,8 @@ const FuwaFuwaVisualizer: React.FC = () => {
           mic.start(() => {
             amplitude = new p5.Amplitude();
             amplitude.setInput(mic);
+            fft = new p5.FFT(0.8, barCount * 2); // スムージング, バー数
+            fft.setInput(mic);
           });
         };
         p.draw = () => {
@@ -104,6 +112,8 @@ const FuwaFuwaVisualizer: React.FC = () => {
           const angleStep = p.TWO_PI / sides;
           const baseRadiusHex = 50;
           const stepsHex = 40;
+          barRadius = baseRadiusHex - 6;
+          if (fft) spectrum = fft.analyze();
 
           p.push();
           p.translate(x, y);
@@ -201,6 +211,36 @@ const FuwaFuwaVisualizer: React.FC = () => {
               p.line(x1, y1, x2, y2);
             }
           }
+
+          // --- ここからリニアバーの円周配置 ---
+          p.push();
+          // 高音域を使わず低音域を全体にマッピング
+          const expandRatio = 0.3; // 0.3=さらに低音域だけを全体に引き伸ばす
+          for (let i = 0; i < barCount; i++) {
+            const angle = (p.TWO_PI / barCount) * i;
+            const mappedIndex = Math.floor(
+              i * expandRatio * (spectrum.length / barCount)
+            );
+            const value = spectrum[mappedIndex] || 0;
+            let amp = p.map(value, 0, 255, 0, barLength);
+            // 高音域（mappedIndexが大きい場合）は反応を強く
+            if (mappedIndex > spectrum.length * 0.05) {
+              amp *= 2.5;
+            }
+            if (amp < barThreshold) continue;
+            const hue = (i / barCount) * 360;
+            p.noStroke();
+            p.fill(hue, 100, 60);
+            const dotCount = Math.floor(amp / 3);
+            for (let d = 0; d < dotCount; d++) {
+              const r = barRadius - d * 3;
+              const dotX = Math.cos(angle) * r;
+              const dotY = Math.sin(angle) * r;
+              p.ellipse(dotX, dotY, 3, 3);
+            }
+          }
+          p.pop();
+          // --- ここまでリニアバーの円周配置 ---
 
           p.pop();
         };
