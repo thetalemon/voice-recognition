@@ -8,6 +8,7 @@ const P5_SOUND_CDN =
 const FuwaFuwaVisualizer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const p5StartedRef = useRef(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
 
   // p5.jsとp5.sound.jsのロード&スケッチ生成
   const startP5 = useCallback(() => {
@@ -54,17 +55,17 @@ const FuwaFuwaVisualizer: React.FC = () => {
       });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let p5Instance: any = null;
 
     loadP5AndSound().then(() => {
       const p5 = (window as any).p5;
       if (!p5 || !containerRef.current) return;
 
-      let radius = 50;
-      let pulse = 0;
-      let recognizing = false;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let mic: any, amplitude: any;
       const THRESHOLD = 0.01;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let fft: any;
       let spectrum: number[] = [];
       const barCount = 32;
@@ -72,6 +73,7 @@ const FuwaFuwaVisualizer: React.FC = () => {
       const barLength = 32;
       const barThreshold = 12; // この値未満の音量では粒を出さない
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sketch = (p: any) => {
         p.setup = () => {
           p.createCanvas(p.windowWidth, p.windowHeight);
@@ -86,7 +88,19 @@ const FuwaFuwaVisualizer: React.FC = () => {
           });
         };
         p.draw = () => {
-          p.background(0);
+          const now = Date.now();
+          // カメラ映像をcanvas全体にストレッチ描画
+          if (videoRef.current && videoRef.current.readyState >= 2) {
+            p.drawingContext.drawImage(
+              videoRef.current,
+              0,
+              0,
+              p.width,
+              p.height
+            );
+          } else {
+            p.background(0);
+          }
           const x = p.width / 2;
           const y = p.height / 2;
 
@@ -289,6 +303,25 @@ const FuwaFuwaVisualizer: React.FC = () => {
     });
   }, []);
 
+  // カメラ映像取得のみ
+  React.useEffect(() => {
+    let stream: MediaStream | null = null;
+    (async () => {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        if (videoRef.current.srcObject !== stream) {
+          videoRef.current.srcObject = stream;
+        }
+        if (videoRef.current.paused || videoRef.current.readyState < 2) {
+          videoRef.current.play().catch(() => {});
+        }
+      }
+    })();
+    return () => {
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
   // クリーンアップ
   useEffect(() => {
     return () => {
@@ -299,13 +332,55 @@ const FuwaFuwaVisualizer: React.FC = () => {
     };
   }, []);
 
+  const [started, setStarted] = React.useState(false);
+
+  const handleStart = () => {
+    setStarted(true);
+    startP5();
+  };
+
   return (
     <div
-      ref={containerRef}
-      style={{ width: "100vw", height: "100vh", cursor: "pointer" }}
-      onClick={startP5}
-      title="クリックで音声ビジュアライザを有効化"
-    />
+      style={{
+        width: "100vw",
+        height: "100vh",
+        background: "#000",
+        position: "relative",
+      }}
+    >
+      {!started && (
+        <button
+          onClick={handleStart}
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            fontSize: 24,
+            padding: "1em 2em",
+            background: "#222",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+            boxShadow: "0 2px 16px #0008",
+          }}
+        >
+          音声認識を開始
+        </button>
+      )}
+      {/* カメラ映像は非表示で配置 */}
+      <video ref={videoRef} style={{ display: "none" }} playsInline muted />
+      <div
+        ref={containerRef}
+        style={{
+          width: "100vw",
+          height: "100vh",
+          display: started ? undefined : "none",
+        }}
+        title="クリックで音声ビジュアライザを有効化"
+      />
+    </div>
   );
 };
 

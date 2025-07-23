@@ -54,18 +54,18 @@ const FuwaFuwaVisualizer: React.FC = () => {
       });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let p5Instance: any = null;
 
     loadP5AndSound().then(() => {
       const p5 = (window as any).p5;
       if (!p5 || !containerRef.current) return;
 
-      let radius = 50;
-      let pulse = 0;
-      let recognizing = false;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let mic: any, amplitude: any;
       const THRESHOLD = 0.01;
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sketch = (p: any) => {
         p.setup = () => {
           p.createCanvas(p.windowWidth, p.windowHeight);
