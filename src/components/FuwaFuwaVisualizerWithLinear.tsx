@@ -88,16 +88,37 @@ const FuwaFuwaVisualizer: React.FC = () => {
           });
         };
         p.draw = () => {
-          const now = Date.now();
           // カメラ映像をcanvas全体にストレッチ描画
           if (videoRef.current && videoRef.current.readyState >= 2) {
-            p.drawingContext.drawImage(
-              videoRef.current,
-              0,
-              0,
-              p.width,
-              p.height
-            );
+            // ドット絵変換用パラメータ
+            const dotSize = 24; // ドットの大きさ（大きいほど荒い）
+            // videoの内容を一時的なcanvasに描画
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = p.width;
+            tempCanvas.height = p.height;
+            const tempCtx = tempCanvas.getContext("2d");
+            if (tempCtx) {
+              tempCtx.drawImage(videoRef.current, 0, 0, p.width, p.height);
+              const imgData = tempCtx.getImageData(0, 0, p.width, p.height);
+              // p5.jsのピクセル操作
+              p.colorMode(p.RGB, 255);
+              p.stroke(0);
+              p.strokeWeight(18);
+              for (let y = 0; y < p.height; y += dotSize) {
+                for (let x = 0; x < p.width; x += dotSize) {
+                  const idx = (y * p.width + x) * 4;
+                  const r = imgData.data[idx];
+                  const g = imgData.data[idx + 1];
+                  const b = imgData.data[idx + 2];
+                  // 明度反転したgray値で水色の階調
+                  const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                  const invGray = 255 - gray;
+                  p.fill(0, invGray, 255);
+                  p.ellipse(x + dotSize / 2, y + dotSize / 2, dotSize, dotSize);
+                }
+              }
+              p.colorMode(p.HSL, 360, 100, 100, 1);
+            }
           } else {
             p.background(0);
           }
@@ -108,18 +129,8 @@ const FuwaFuwaVisualizer: React.FC = () => {
           const level =
             amplitude && amplitude.getLevel ? amplitude.getLevel() : 0;
           const wave = level > THRESHOLD;
-          const baseRadius = 50;
-          const steps = 120;
-          const minAmplitude = 2;
-          const maxAmplitude = 500;
-          const waveAmplitude = wave
-            ? Math.max(minAmplitude, Math.min(maxAmplitude, level * 60))
-            : 0;
-          const waveFreq = 8;
-          const waveSpeed = 0.25;
-          // グローの設定を狭く
           const glowAlpha = 0.5;
-          const glowSteps = [2]; // グロー範囲をさらに細く
+          const glowSteps = [2];
 
           // 六角形の虹色グラデーション＋波打ち
           const sides = 6;
