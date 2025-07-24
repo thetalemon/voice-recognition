@@ -128,20 +128,27 @@ const VoiceToText: React.FC<VoiceToTextProps> = ({ started }) => {
   if (!isClient) return null;
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: 20 }}>
-      <div
-        style={{
-          minHeight: 80,
-          border: "1px solid #ccc",
-          borderRadius: 8,
-          padding: 12,
-          background: "#fafafa",
-          fontSize: 18,
-          whiteSpace: "pre-wrap",
-        }}
-      >
-        {transcript + interim || "ここに音声認識結果が表示されます"}
-      </div>
+    <div
+      style={{
+        position: "fixed",
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, -50%)",
+        zIndex: 1000,
+        minWidth: 320,
+        maxWidth: 600,
+        minHeight: 80,
+        border: "1px solid #ccc",
+        borderRadius: 12,
+        padding: 20,
+        background: "rgba(250,250,250,0.85)",
+        fontSize: 22,
+        whiteSpace: "pre-wrap",
+        boxShadow: "0 4px 24px #0003",
+        textAlign: "center",
+      }}
+    >
+      {transcript + interim || "ここに音声認識結果が表示されます"}
     </div>
   );
 };
