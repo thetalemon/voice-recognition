@@ -52,6 +52,7 @@ const VoiceToText: React.FC<VoiceToTextProps> = ({ started }) => {
   const [transcript, setTranscript] = useState(""); // 確定テキスト
   const [interim, setInterim] = useState(""); // 暫定テキスト
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const isRecognizingRef = useRef(false);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -70,6 +71,8 @@ const VoiceToText: React.FC<VoiceToTextProps> = ({ started }) => {
 
   const startListening = () => {
     if (typeof window === "undefined") return;
+    if (isRecognizingRef.current) return; // すでに認識中なら何もしない
+
     const SpeechRecognitionConstructor =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognitionConstructor) {
@@ -101,11 +104,16 @@ const VoiceToText: React.FC<VoiceToTextProps> = ({ started }) => {
         setInterim(interimTranscript);
       };
 
-      recognition.onend = () => {
+      (recognition as any).onstart = () => {
+        isRecognizingRef.current = true;
+        setListening(true);
+      };
+      (recognition as any).onend = () => {
+        isRecognizingRef.current = false;
         setListening(false);
       };
-
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        isRecognizingRef.current = false;
         setListening(false);
         alert("音声認識エラー: " + event.error);
       };
@@ -113,9 +121,11 @@ const VoiceToText: React.FC<VoiceToTextProps> = ({ started }) => {
       recognitionRef.current = recognition;
     }
 
-    if (!recognition) return; // 型ガード
+    // ここで「認識中」ならstart()しない
+    if (isRecognizingRef.current) return;
+    isRecognizingRef.current = true; // start()直前に即時セット
+
     recognition.start();
-    setListening(true);
   };
 
   const stopListening = () => {

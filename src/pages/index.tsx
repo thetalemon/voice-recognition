@@ -25,12 +25,30 @@ export default function Home() {
         {!started && (
           <button
             onClick={() => setStarted(true)}
-            style={{ fontSize: 24, padding: "1em 2em", marginBottom: 32 }}
+            style={{
+              position: "fixed",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 1000,
+              minWidth: 320,
+              maxWidth: 600,
+              minHeight: 80,
+              border: "1px solid #ccc",
+              borderRadius: 12,
+              padding: 20,
+              background: "rgba(250,250,250,0.85)",
+              fontSize: 22,
+              whiteSpace: "pre-wrap",
+              boxShadow: "0 4px 24px #0003",
+              textAlign: "center",
+              cursor: "pointer",
+            }}
           >
             音声認識を開始
           </button>
         )}
-        <VoiceToText started={started} />
+        {started && <VoiceToText started={started} />}
         <FuwaFuwaVisualizerWithLinear started={started} />
       </main>
     </div>
