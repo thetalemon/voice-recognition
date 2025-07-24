@@ -5,7 +5,13 @@ const P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
 const P5_SOUND_CDN =
   "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js";
 
-const FuwaFuwaVisualizer: React.FC = () => {
+interface FuwaFuwaVisualizerWithLinearProps {
+  started: boolean;
+}
+
+const FuwaFuwaVisualizerWithLinear: React.FC<
+  FuwaFuwaVisualizerWithLinearProps
+> = ({ started }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const p5StartedRef = useRef(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -356,12 +362,12 @@ const FuwaFuwaVisualizer: React.FC = () => {
     };
   }, []);
 
-  const [started, setStarted] = React.useState(false);
-
-  const handleStart = () => {
-    setStarted(true);
-    startP5();
-  };
+  useEffect(() => {
+    if (started) {
+      startP5();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started]);
 
   return (
     <div
@@ -372,27 +378,6 @@ const FuwaFuwaVisualizer: React.FC = () => {
         position: "relative",
       }}
     >
-      {!started && (
-        <button
-          onClick={handleStart}
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            fontSize: 24,
-            padding: "1em 2em",
-            background: "#222",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-            boxShadow: "0 2px 16px #0008",
-          }}
-        >
-          音声認識を開始
-        </button>
-      )}
       {/* カメラ映像は非表示で配置 */}
       <video ref={videoRef} style={{ display: "none" }} playsInline muted />
       <div
@@ -408,4 +393,4 @@ const FuwaFuwaVisualizer: React.FC = () => {
   );
 };
 
-export default FuwaFuwaVisualizer;
+export default FuwaFuwaVisualizerWithLinear;

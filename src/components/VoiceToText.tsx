@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 // --- Web Speech API 型定義（TypeScript用、最低限） ---
 interface SpeechRecognition extends EventTarget {
   lang: string;
@@ -43,18 +43,30 @@ declare global {
   }
 }
 
-const VoiceToText: React.FC = () => {
+interface VoiceToTextProps {
+  started: boolean;
+}
+
+const VoiceToText: React.FC<VoiceToTextProps> = ({ started }) => {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState(""); // 確定テキスト
   const [interim, setInterim] = useState(""); // 暫定テキスト
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const [isClient, setIsClient] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (typeof window !== "undefined") {
       setIsClient(true);
     }
   }, []);
+
+  // startedがtrueになったら自動でstartListening
+  useEffect(() => {
+    if (started && !listening) {
+      startListening();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started]);
 
   const startListening = () => {
     if (typeof window === "undefined") return;
@@ -117,14 +129,6 @@ const VoiceToText: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: 20 }}>
-      <h2>音声入力 → テキスト出力</h2>
-      <div style={{ marginBottom: 16 }}>
-        {listening ? (
-          <button onClick={stopListening}>停止</button>
-        ) : (
-          <button onClick={startListening}>録音開始</button>
-        )}
-      </div>
       <div
         style={{
           minHeight: 80,
