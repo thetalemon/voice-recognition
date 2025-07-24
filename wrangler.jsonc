@@ -3,7 +3,6 @@
   "compatibility_date": "2025-07-24",
   "site": {
     "bucket": "./out",
-    "entry-point": "workers-site",
     "not_found_handling": "single-page-application"
   }
 }
