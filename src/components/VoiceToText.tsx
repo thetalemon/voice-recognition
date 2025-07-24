@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 // --- Web Speech API 型定義（TypeScript用、最低限） ---
-interface SpeechRecognition extends EventTarget {
+interface SpeechRecognitionType extends EventTarget {
   lang: string;
   interimResults: boolean;
   continuous: boolean;
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
   onend: (() => void) | null;
   onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onstart?: (() => void) | null;
   start(): void;
   stop(): void;
 }
@@ -38,8 +39,8 @@ interface SpeechRecognitionErrorEvent extends Event {
 
 declare global {
   interface Window {
-    webkitSpeechRecognition?: any;
-    SpeechRecognition?: any;
+    webkitSpeechRecognition?: { new (): SpeechRecognitionType };
+    SpeechRecognition?: { new (): SpeechRecognitionType };
   }
 }
 
@@ -51,7 +52,7 @@ const VoiceToText: React.FC<VoiceToTextProps> = ({ started }) => {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState(""); // 確定テキスト
   const [interim, setInterim] = useState(""); // 暫定テキスト
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionType | null>(null);
   const isRecognizingRef = useRef(false);
   const [isClient, setIsClient] = useState(false);
 
@@ -80,9 +81,11 @@ const VoiceToText: React.FC<VoiceToTextProps> = ({ started }) => {
       return;
     }
 
-    let recognition: SpeechRecognition | null = recognitionRef.current;
+    let recognition: SpeechRecognitionType | null = recognitionRef.current;
     if (!recognition) {
       recognition = new SpeechRecognitionConstructor();
+    }
+    if (recognition) {
       recognition.lang = "ja-JP";
       recognition.interimResults = true;
       recognition.continuous = true;
@@ -104,11 +107,11 @@ const VoiceToText: React.FC<VoiceToTextProps> = ({ started }) => {
         setInterim(interimTranscript);
       };
 
-      (recognition as any).onstart = () => {
+      recognition.onstart = () => {
         isRecognizingRef.current = true;
         setListening(true);
       };
-      (recognition as any).onend = () => {
+      recognition.onend = () => {
         isRecognizingRef.current = false;
         setListening(false);
       };
@@ -125,15 +128,12 @@ const VoiceToText: React.FC<VoiceToTextProps> = ({ started }) => {
     if (isRecognizingRef.current) return;
     isRecognizingRef.current = true; // start()直前に即時セット
 
-    recognition.start();
+    if (recognition) {
+      recognition.start();
+    }
   };
 
-  const stopListening = () => {
-    recognitionRef.current?.stop();
-    setListening(false);
-    recognitionRef.current = null;
-    setInterim(""); // 停止時に暫定テキストをクリア
-  };
+  // (未使用のstopListening関数を削除)
 
   if (!isClient) return null;
 

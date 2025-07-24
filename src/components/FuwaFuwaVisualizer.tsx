@@ -1,5 +1,7 @@
 "use client";
 import React, { useRef, useEffect, useCallback } from "react";
+// @ts-expect-error: p5.js型定義をimportするため
+import type p5 from "p5";
 
 const P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
 const P5_SOUND_CDN =
@@ -9,13 +11,12 @@ const FuwaFuwaVisualizer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const p5StartedRef = useRef(false);
 
-  // p5.jsとp5.sound.jsのロード&スケッチ生成
   const startP5 = useCallback(() => {
     if (p5StartedRef.current) return;
     p5StartedRef.current = true;
 
-    const isP5Loaded =
-      (window as any).p5 && (window as any).p5.prototype.getAudioContext;
+    const win = window as unknown as { p5?: typeof p5; p5Instance?: p5 };
+    const isP5Loaded = win.p5 && win.p5.prototype.getAudioContext;
     const isSoundScriptLoaded = !!document.querySelector(
       `script[src="${P5_SOUND_CDN}"]`
     );
@@ -26,7 +27,7 @@ const FuwaFuwaVisualizer: React.FC = () => {
           resolve();
           return;
         }
-        if (!(window as any).p5) {
+        if (!win.p5) {
           const script1 = document.createElement("script");
           script1.src = P5_CDN;
           script1.async = true;
@@ -54,27 +55,29 @@ const FuwaFuwaVisualizer: React.FC = () => {
       });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let p5Instance: any = null;
+    let p5Instance: p5 | null = null;
 
     loadP5AndSound().then(() => {
-      const p5 = (window as any).p5;
-      if (!p5 || !containerRef.current) return;
+      const p5Ctor = win.p5;
+      if (!p5Ctor || !containerRef.current) return;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let mic: any, amplitude: any;
+      let mic: p5.AudioIn | null = null;
+      let amplitude: p5.Amplitude | null = null;
       const THRESHOLD = 0.01;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sketch = (p: any) => {
+      const sketch = (p: p5) => {
         p.setup = () => {
           p.createCanvas(p.windowWidth, p.windowHeight);
-          p.noFill(); // 塗りつぶしなし
+          p.noFill();
           p.colorMode(p.HSL, 360, 100, 100, 1);
-          mic = new p5.AudioIn();
+          mic = new (
+            p as unknown as { AudioIn: new () => p5.AudioIn }
+          ).AudioIn();
           mic.start(() => {
-            amplitude = new p5.Amplitude();
-            amplitude.setInput(mic);
+            amplitude = new (
+              p as unknown as { Amplitude: new () => p5.Amplitude }
+            ).Amplitude();
+            amplitude.setInput(mic!);
           });
         };
         p.draw = () => {
@@ -82,24 +85,12 @@ const FuwaFuwaVisualizer: React.FC = () => {
           const x = p.width / 2;
           const y = p.height / 2;
 
-          // 音量取得
           const level =
             amplitude && amplitude.getLevel ? amplitude.getLevel() : 0;
           const wave = level > THRESHOLD;
-          const baseRadius = 50;
-          const steps = 120;
-          const minAmplitude = 2;
-          const maxAmplitude = 500;
-          const waveAmplitude = wave
-            ? Math.max(minAmplitude, Math.min(maxAmplitude, level * 60))
-            : 0;
-          const waveFreq = 8;
-          const waveSpeed = 0.25;
-          // グローの設定を狭く
           const glowAlpha = 0.5;
-          const glowSteps = [2]; // グロー範囲をさらに細く
+          const glowSteps = [2];
 
-          // 六角形の虹色グラデーション＋波打ち
           const sides = 6;
           const angleStep = p.TWO_PI / sides;
           const baseRadiusHex = 50;
@@ -109,7 +100,6 @@ const FuwaFuwaVisualizer: React.FC = () => {
           p.translate(x, y);
           p.colorMode(p.HSL, 360, 100, 100, 1);
 
-          // 頂点座標を計算
           const vertices: { x: number; y: number }[] = [];
           for (let i = 0; i < sides; i++) {
             const a = angleStep * i;
@@ -118,16 +108,14 @@ const FuwaFuwaVisualizer: React.FC = () => {
               y: Math.sin(a) * baseRadiusHex,
             });
           }
-          vertices.push(vertices[0]); // 閉じる
+          vertices.push(vertices[0]);
 
-          // グロー
           for (const glow of glowSteps) {
             p.strokeWeight(glow);
             for (let i = 0; i < sides; i++) {
               for (let j = 0; j < stepsHex; j++) {
                 const t1 = j / stepsHex;
                 const t2 = (j + 1) / stepsHex;
-                // 波打ち
                 const angle1 = p.lerp(angleStep * i, angleStep * (i + 1), t1);
                 const angle2 = p.lerp(angleStep * i, angleStep * (i + 1), t2);
                 const randomSeed1 = 100 + (i * stepsHex + j) * 13;
@@ -163,13 +151,11 @@ const FuwaFuwaVisualizer: React.FC = () => {
             }
           }
 
-          // 細い本線
           p.strokeWeight(0.1);
           for (let i = 0; i < sides; i++) {
             for (let j = 0; j < stepsHex; j++) {
               const t1 = j / stepsHex;
               const t2 = (j + 1) / stepsHex;
-              // 波打ち
               const angle1 = p.lerp(angleStep * i, angleStep * (i + 1), t1);
               const angle2 = p.lerp(angleStep * i, angleStep * (i + 1), t2);
               const randomSeed1 = 100 + (i * stepsHex + j) * 13;
@@ -209,20 +195,20 @@ const FuwaFuwaVisualizer: React.FC = () => {
         };
       };
 
-      if ((window as any).p5Instance) {
-        (window as any).p5Instance.remove();
+      if (win.p5Instance) {
+        win.p5Instance.remove();
       }
-      p5Instance = new p5(sketch, containerRef.current);
-      (window as any).p5Instance = p5Instance;
+      p5Instance = new p5Ctor(sketch, containerRef.current);
+      win.p5Instance = p5Instance;
     });
   }, []);
 
-  // クリーンアップ
   useEffect(() => {
     return () => {
-      if ((window as any).p5Instance) {
-        (window as any).p5Instance.remove();
-        (window as any).p5Instance = null;
+      const win = window as unknown as { p5Instance?: p5 };
+      if (win.p5Instance) {
+        win.p5Instance.remove();
+        win.p5Instance = undefined;
       }
     };
   }, []);

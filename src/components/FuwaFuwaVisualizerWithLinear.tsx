@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useRef, useEffect, useCallback } from "react";
+// @ts-expect-error: p5.js型定義をimportするため
+import type p5 from "p5";
 
 const P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
 const P5_SOUND_CDN =
@@ -21,76 +24,77 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
     if (p5StartedRef.current) return;
     p5StartedRef.current = true;
 
-    const isP5Loaded =
-      (window as any).p5 && (window as any).p5.prototype.getAudioContext;
-    const isSoundScriptLoaded = !!document.querySelector(
-      `script[src="${P5_SOUND_CDN}"]`
-    );
-
     function loadP5AndSound() {
       return new Promise<void>((resolve) => {
-        if (isP5Loaded && isSoundScriptLoaded) {
+        // すでにp5とp5.soundがロード済みなら即resolve
+        if (
+          (window as any).p5 &&
+          (window as any).p5.prototype.getAudioContext
+        ) {
           resolve();
           return;
         }
-        if (!(window as any).p5) {
-          const script1 = document.createElement("script");
-          script1.src = P5_CDN;
-          script1.async = true;
-          script1.onload = () => {
-            if (!isSoundScriptLoaded) {
-              const script2 = document.createElement("script");
-              script2.src = P5_SOUND_CDN;
-              script2.async = true;
-              script2.onload = () => resolve();
-              document.body.appendChild(script2);
-            } else {
-              resolve();
-            }
-          };
-          document.body.appendChild(script1);
-        } else if (!isSoundScriptLoaded) {
+        // p5.jsをロード
+        const script1 = document.createElement("script");
+        script1.src = P5_CDN;
+        script1.async = true;
+        script1.onload = () => {
+          // p5.sound.jsをロード
           const script2 = document.createElement("script");
           script2.src = P5_SOUND_CDN;
           script2.async = true;
           script2.onload = () => resolve();
           document.body.appendChild(script2);
-        } else {
-          resolve();
-        }
+        };
+        document.body.appendChild(script1);
       });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let p5Instance: any = null;
+    let p5Instance: p5 | null = null;
 
     loadP5AndSound().then(() => {
-      const p5 = (window as any).p5;
-      if (!p5 || !containerRef.current) return;
+      const winP5: any = (window as any).p5;
+      if (!winP5 || !containerRef.current) return;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let mic: any, amplitude: any;
+      let mic: unknown = null;
+      const amplitude: unknown = null;
       const THRESHOLD = 0.01;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let fft: any;
+      const fft: unknown = null;
       let spectrum: number[] = [];
       const barCount = 32;
-      let barRadius = 32; // 仮の初期値、実際はp.draw内で再設定
+      let barRadius = 32;
       const barLength = 32;
-      const barThreshold = 12; // この値未満の音量では粒を出さない
+      const barThreshold = 12;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sketch = (p: any) => {
+        // 型ガード
+        if (
+          !winP5 ||
+          typeof winP5.AudioIn !== "function" ||
+          typeof winP5.Amplitude !== "function" ||
+          typeof winP5.FFT !== "function"
+        ) {
+          console.error(
+            "p5 or p5.sound.js not loaded or AudioIn/Amplitude/FFT not available"
+          );
+          return;
+        }
+        const P5AudioIn = winP5.AudioIn as { new (): any };
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const P5Amplitude = winP5.Amplitude as { new (): any };
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const P5FFT = winP5.FFT as {
+          new (smoothing?: number, bins?: number): any;
+        };
+
         p.setup = () => {
           p.createCanvas(p.windowWidth, p.windowHeight);
-          p.noFill(); // 塗りつぶしなし
+          p.noFill();
           p.colorMode(p.HSL, 360, 100, 100, 1);
-          mic = new p5.AudioIn();
-          mic.start(() => {
-            amplitude = new p5.Amplitude();
-            amplitude.setInput(mic);
-            fft = new p5.FFT(0.8, barCount * 2); // スムージング, バー数
-            fft.setInput(mic);
+          mic = new P5AudioIn();
+          (mic as any).start(() => {
+            (amplitude as any).setInput(mic);
+            (fft as any).setInput(mic);
           });
         };
         p.draw = () => {
@@ -102,7 +106,8 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
             const tempCanvas = document.createElement("canvas");
             tempCanvas.width = p.width;
             tempCanvas.height = p.height;
-            const tempCtx = tempCanvas.getContext("2d");
+            const tempCtx: CanvasRenderingContext2D | null =
+              tempCanvas.getContext("2d");
             if (tempCtx) {
               // 映像を左右反転（ミラー）
               tempCtx.save();
@@ -123,7 +128,6 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
                   const b = imgData.data[idx + 2];
                   // 明度反転したgray値で水色の階調
                   const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                  const invGray = 255 - gray;
                   // 彩度を下げた水色（全体的に暗め）
                   p.fill(0, gray * 0.6, 180);
                   p.ellipse(x + dotSize / 2, y + dotSize / 2, dotSize, dotSize);
@@ -139,7 +143,9 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
 
           // 音量取得
           const level =
-            amplitude && amplitude.getLevel ? amplitude.getLevel() : 0;
+            amplitude && (amplitude as any).getLevel
+              ? (amplitude as any).getLevel()
+              : 0;
           const wave = level > THRESHOLD;
           const glowAlpha = 0.5;
           const glowSteps = [2];
@@ -150,7 +156,7 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
           const baseRadiusHex = 50;
           const stepsHex = 40;
           barRadius = baseRadiusHex - 2;
-          if (fft) spectrum = fft.analyze();
+          if (fft) spectrum = (fft as any).analyze();
 
           p.push();
           p.translate(x, y);
@@ -328,7 +334,7 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
       if ((window as any).p5Instance) {
         (window as any).p5Instance.remove();
       }
-      p5Instance = new p5(sketch, containerRef.current);
+      p5Instance = new winP5(sketch, containerRef.current);
       (window as any).p5Instance = p5Instance;
     });
   }, []);
@@ -355,9 +361,10 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
   // クリーンアップ
   useEffect(() => {
     return () => {
-      if ((window as any).p5Instance) {
-        (window as any).p5Instance.remove();
-        (window as any).p5Instance = null;
+      const win = window as unknown as { p5Instance?: p5 };
+      if (win.p5Instance) {
+        win.p5Instance.remove();
+        win.p5Instance = undefined;
       }
     };
   }, []);
