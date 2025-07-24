@@ -2,7 +2,6 @@
   "name": "voice-visualize",
   "compatibility_date": "2025-07-24",
   "site": {
-    "bucket": "./out",
-    "not_found_handling": "single-page-application"
+    "bucket": "./out"
   }
 }
