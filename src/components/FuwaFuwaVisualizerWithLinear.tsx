@@ -22,11 +22,11 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
   // p5.jsとp5.sound.jsのロード&スケッチ生成
   const startP5 = useCallback(() => {
     if (p5StartedRef.current) return;
+    if (!containerRef.current) return;
     p5StartedRef.current = true;
 
     function loadP5AndSound() {
       return new Promise<void>((resolve) => {
-        // すでにp5とp5.soundがロード済みなら即resolve
         if (
           (window as any).p5 &&
           (window as any).p5.prototype.getAudioContext
@@ -34,12 +34,10 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
           resolve();
           return;
         }
-        // p5.jsをロード
         const script1 = document.createElement("script");
         script1.src = P5_CDN;
         script1.async = true;
         script1.onload = () => {
-          // p5.sound.jsをロード
           const script2 = document.createElement("script");
           script2.src = P5_SOUND_CDN;
           script2.async = true;
@@ -57,9 +55,9 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
       if (!winP5 || !containerRef.current) return;
 
       let mic: unknown = null;
-      const amplitude: unknown = null;
+      let amplitude: any = null;
       const THRESHOLD = 0.01;
-      const fft: unknown = null;
+      let fft: any = null;
       let spectrum: number[] = [];
       const barCount = 32;
       let barRadius = 32;
@@ -93,8 +91,10 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
           p.colorMode(p.HSL, 360, 100, 100, 1);
           mic = new P5AudioIn();
           (mic as any).start(() => {
-            (amplitude as any).setInput(mic);
-            (fft as any).setInput(mic);
+            amplitude = new P5Amplitude();
+            amplitude.setInput(mic);
+            fft = new P5FFT(0.8, barCount * 2);
+            fft.setInput(mic);
           });
         };
         p.draw = () => {
@@ -337,7 +337,7 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
       p5Instance = new winP5(sketch, containerRef.current);
       (window as any).p5Instance = p5Instance;
     });
-  }, []);
+  }, [containerRef, started]);
 
   // カメラ映像取得のみ
   React.useEffect(() => {
@@ -370,10 +370,22 @@ const FuwaFuwaVisualizerWithLinear: React.FC<
   }, []);
 
   useEffect(() => {
-    if (started) {
+    if (started && containerRef.current) {
       startP5();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started, containerRef.current]);
+
+  useEffect(() => {
+    if (!started) {
+      // startedがfalseになったらp5インスタンスをクリーンアップし、再度startP5できるようにする
+      const win = window as unknown as { p5Instance?: p5 };
+      if (win.p5Instance) {
+        win.p5Instance.remove();
+        win.p5Instance = undefined;
+      }
+      p5StartedRef.current = false;
+    }
   }, [started]);
 
   return (
